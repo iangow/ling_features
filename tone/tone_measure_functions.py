@@ -1,6 +1,6 @@
 import re
 
-file = open("word_lists.txt", "r")
+file = open("tone/word_lists.txt", "r")
 word_lists = eval(file.read())
 
 def make_regex(word_list):
