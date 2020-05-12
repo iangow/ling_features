@@ -7,4 +7,4 @@ from word_count.word_count_functions import word_count, \
 
 from topic.topic_functions import kls_domains_ind
 
-# from tone.tone_measure_functions import tone_count
+from tone.tone_measure_functions import tone_count
