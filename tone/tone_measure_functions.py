@@ -1,7 +1,6 @@
 import re
 
-file = open("tone/word_lists.txt", "r")
-word_lists = eval(file.read())
+from tone.word_lists import word_lists
 categories = [key for key in word_lists.keys()]
 
 def make_regex(word_list):

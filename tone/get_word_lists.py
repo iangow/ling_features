@@ -23,6 +23,6 @@ def get_words(i):
 word_lists = { cat: get_words(i) for i, cat in enumerate(category) }
 
 # Save dictionary as text file
-f = open("word_lists.txt", "w")
-f.write(str(word_lists))
+f = open("tone/word_lists.py", "w")
+f.write("word_lists = " + str(word_lists))
 f.close()
