@@ -5,7 +5,7 @@ with open("README.md", "r") as f:
     print(long_description)
 
 setuptools.setup(
-    name="ling_features",
+    name="lingfeatures",
     version="0.0.1",
     author="Ian Gow",
     author_email="iandgow@gmail.com",
