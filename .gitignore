@@ -2,3 +2,6 @@
 .Rhistory
 .RData
 .Ruserdata
+build
+dist
+ling_features.egg-info
