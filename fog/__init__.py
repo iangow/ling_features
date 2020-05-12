@@ -1,3 +1,3 @@
-name = "ling_features"
+name = "lingfeatures"
 
 from fog.fog import fog
