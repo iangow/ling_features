@@ -10,7 +10,7 @@ def make_regex(words):
     return regex
 
 def re_dict():
-    df = pd.read_csv("lm_words.csv")    
+    df = pd.read_csv("tone/lm_words.csv")    
     categories = [key for key in regex_dict.keys()]
     regex_dict = { cat: make_regex(df['words'][df['category'] == cat].iloc[0]) for cat in categories}
     return regex_dict
