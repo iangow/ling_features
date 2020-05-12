@@ -14,7 +14,7 @@ setuptools.setup(
     long_description_content_type="text/markdown",
     url="https://github.com/iangow/ling_features/",
     packages=setuptools.find_packages(),
-    install_requires=['nltk'],
+    install_requires=['nltk', 'pandas'],
     python_requires=">=3",
     classifiers=[
         "Programming Language :: Python :: 3",

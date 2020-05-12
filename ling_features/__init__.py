@@ -4,3 +4,5 @@ from fog.fog import fog
 
 from word_count.word_count_functions import word_count, \
   number_count, sent_count
+
+from topic.topic_functions import kls_domains_ind
