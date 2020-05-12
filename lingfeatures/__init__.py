@@ -1,3 +1,3 @@
 name = "lingfeatures"
 
-from lingfeatures.fog import fog
+from fog.fog import fog
