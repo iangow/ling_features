@@ -1,4 +1,4 @@
-import re, nltk, sys
+import re, nltk
 
 def word_count(raw, min_length = 1):
     """ Function to count the number of words in a passage of text.
