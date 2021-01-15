@@ -12,7 +12,7 @@ def makeWordLists(file):
     # produces (word1|word2|word with space3|...|wordN)
     def makeRegexList(lsFile):
         regex_list = "("
-        with open(lsFile) as listFile:
+        with open(os.path.join(_HERE, lsFile)) as listFile:
             for line in listFile:
                 line = line.strip()
                 regex_list += line
