@@ -1,0 +1,31 @@
+# After Call non-answers
+TYPE=AFTERCALL
+(?i)\b(off-line|offline|after the call|after call|another (time|day))\b
+
+# Unable non-answers
+TYPE=UNABLE
+(?i)\b(I|we)\b\s?([\w',&@#$%_\-\(\)\[\]]+\s){0,2}((do(n('|’)t| not))|(can('t|not| not)))\b\s?([\w',&@#$%_\-\(\)\[\]]+\s){0,2}(know|recall|remember)\b
+(?i)\b(I|we) have no idea\b
+(?i)\b(I|we) do(n('|’)t| not)\b\s?([\w',&@#$%_\-\(\)\[\]]+\s){0,2}(have (the|it|that|this|those))\b
+(?i)(n('|’)t|\bnot|cannot|without)\b\s?([\w',&@#$%_\-\(\)\[\]]+\s){0,8}(share|sharing|shared)\b\s?([\w',&@#$%_\-\(\)\[\]]+\s){0,8}(with)\b
+
+# Refuse non-answers
+TYPE=REFUSE
+
+# {Disclosure Verb}..."no"...{Disclosure Noun}
+(?i)\b{DISC_VERB_NOUN}\b\s?([\w',&@#$%_\-\(\)\[\]]+\s){0,2}no\b\s?([\w',&@#$%_\-\(\)\[\]]+\s){0,2}{DISC_NOUN}\b
+
+# {Disclosure Verb}..."no"
+(?i)\b{DISC_VERB_NO_NOUN}\b\s?([\w',&@#$%_\-\(\)\[\]]+\s){0,2}no\b
+
+# {Negation}...{Disclosure Verb}
+(?i)(n('|’)t|\bnot|cannot|without)\b\s?([\w',&@#$%_\-\(\)\[\]]+\s){0,8}{DISC_VERB_NO_NOUN}\b
+
+# {Negation}...{Disclosure Verb}...{Disclosure Noun}
+(?i)(n('|’)t|\bnot|cannot|without)\b\s?([\w',&@#$%_\-\(\)\[\]]+\s){0,8}{DISC_VERB_NOUN}\b\s?([\w',&@#$%_\-\(\)\[\]]+\s){0,8}{DISC_NOUN}\b
+
+# {Deferral}...{Disclosure Verb}
+(?i)\b{DEFERRAL}\b\s?([\w',&@#$%_\-\(\)\[\]]+\s){0,8}{DISC_VERB_NO_NOUN}\b
+(?i)\b{DEFERRAL}\b\s?([\w',&@#$%_\-\(\)\[\]]+\s){0,8}{DISC_VERB_NOUN}\b\s?([\w',&@#$%_\-\(\)\[\]]+\s){0,8}{DISC_NOUN}\b
+
+

@@ -1,0 +1,5 @@
+# Start by defining the dictionary files
+{DISC_VERB_NOUN}=word_lists/disc_verb_noun
+{DISC_VERB_NO_NOUN}=word_lists/disc_verb_no_noun
+{DISC_NOUN}=word_lists/disc_noun
+{DEFERRAL}=word_lists/deferral
