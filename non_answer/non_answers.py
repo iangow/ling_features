@@ -34,7 +34,7 @@ def makeWordLists(file):
 # Assemble the regexes #
 ########################
 
-word_lists = makeWordLists("non_answer/word_lists.txt")
+word_lists = makeWordLists("word_lists.txt")
 
 def assembleRegexes(word_lists, regex_file):
     regexes = []
@@ -62,7 +62,7 @@ def assembleRegexes(word_lists, regex_file):
                 regex_id = regex_id + 1
     return regexes
 
-regexes = assembleRegexes(word_lists, "non_answer/regex.txt")
+regexes = assembleRegexes(word_lists, "regex.txt")
 
 def non_answers(sents):
     """sents is a list of sentences returned by nltk.sent_tokenize"""
