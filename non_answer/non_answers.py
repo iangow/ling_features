@@ -2,6 +2,8 @@
 import re
 import json
 import re
+import os
+_HERE = os.path.dirname(os.path.abspath(__file__))
 
 def makeWordLists(file):
 
@@ -34,7 +36,7 @@ def makeWordLists(file):
 # Assemble the regexes #
 ########################
 
-word_lists = makeWordLists("word_lists.txt")
+word_lists = makeWordLists(os.path.join(_HERE, "word_lists.txt"))
 
 def assembleRegexes(word_lists, regex_file):
     regexes = []
@@ -62,7 +64,7 @@ def assembleRegexes(word_lists, regex_file):
                 regex_id = regex_id + 1
     return regexes
 
-regexes = assembleRegexes(word_lists, "regex.txt")
+regexes = assembleRegexes(word_lists, os.path.join(_HERE, "regex.txt"))
 
 def non_answers(sents):
     """sents is a list of sentences returned by nltk.sent_tokenize"""
