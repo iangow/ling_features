@@ -30,7 +30,7 @@ def fog(the_text):
 def fog_agg(texts, prefix=""):
     counter = Counter()
     for text in texts: 
-        counter.update(fog(sent))
+        counter.update(fog(text))
         
     # Fog doesn't aggregate by addition. So recalculate it.
     if counter['fog_words'] > 0 and counter['fog_sents'] > 0:
