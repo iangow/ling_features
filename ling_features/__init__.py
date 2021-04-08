@@ -1,6 +1,6 @@
 name = "ling_features"
 
-from fog.fog_functions import fog
+from fog.fog_functions import fog, fog_agg
 
 from word_count.word_count_functions import word_count, \
   number_count, sent_count
