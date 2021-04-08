@@ -1,6 +1,7 @@
 import re, nltk, sys
 import string
 from nltk.corpus import cmudict
+from collections import Counter
 
 dic = cmudict.dict()
 
@@ -24,3 +25,19 @@ def fog(the_text):
         the_dict = {'fog':fog, 'complex_words': len(complex_words), 'fog_words': len(words),
                     'fog_sents': len(sents)}
         return the_dict
+    
+# Function to aggregate fog over a list of texts
+def fog_agg(texts, prefix=""):
+    counter = Counter()
+    for text in texts: 
+        counter.update(fog(sent))
+        
+    # Fog doesn't aggregate by addition. So recalculate it.
+    if counter['fog_words'] > 0 and counter['fog_sents'] > 0:
+        counter['fog'] = 0.4 * (100.0*counter['complex_words']/counter['fog_words'] +  \
+                                        1.0*counter['fog_words']/counter['fog_sents'])
+    else:
+        counter = {'fog': None, 
+                   'fog_sents': None, 'complex_words': None, 'fog_words': None}
+    
+    return { (prefix + key):counter[key] for key in counter.keys()}
