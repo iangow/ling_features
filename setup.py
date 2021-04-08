@@ -6,7 +6,7 @@ with open("README.md", "r") as f:
 
 setuptools.setup(
     name="ling_features",
-    version="0.0.5",
+    version="0.0.6",
     author="Ian Gow",
     author_email="iandgow@gmail.com",
     description="Linguistic features commonly use in research.",
