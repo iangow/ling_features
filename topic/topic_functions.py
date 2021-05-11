@@ -82,6 +82,9 @@ def expand_json(df, col):
     return pd.concat([df.drop([col], axis=1),
                       df[col].map(lambda x: json.loads(x)).apply(pd.Series)], axis=1)
 
+def get_kls_df():
+    return word_list
+    
 if __name__=="__main__":
 
     text = "I think you spent a little bit of time talking about AdSense for Content, " + \
