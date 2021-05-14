@@ -4,7 +4,7 @@ from nltk.tokenize import wordpunct_tokenize
 import pandas as pd
 
 # Word list from draft of Kothari, Li and Short (2009)
-word_list = {
+kls_word_list = {
 	'market': ['market', 'marketplace', 'environment', 'segment', 'sector'],
 	'competition': ['market', 'marketplace', 'environment', 'customer', 'channel', 'value',
 		'first-mover', 'technology', 'alliance', 'partnership', 'venture',
@@ -63,7 +63,17 @@ word_list = {
 		'testimony', 'industry', 'watchdog', 'consumer rights', 'patient rights']
 		}
 
-def kls_domains(raw_text):
+# Import word lists in csv files
+def create_word_list(input_csv):
+    df = pd.read_csv(input_csv)
+    # Make exact match unless the word has * at the end
+    df.replace({'\*':'\\\S*'}, regex=True, inplace=True)
+    return {col:('\\b'+df[col].dropna().astype(str)+'\\b').tolist() for col in df}
+
+mpr_word_list = create_word_list('mpr_wordlist.csv')
+
+
+def get_domains(raw_text, word_list):
 
 	lower_text = raw_text.lower()
 
@@ -73,8 +83,17 @@ def kls_domains(raw_text):
 
 def kls_domains_ind(raw_text):
 
+    word_list = kls_word_list
     domains = word_list.keys()
-    domain_list = kls_domains(raw_text)
+    domain_list = get_domains(raw_text, word_list)
+
+    return json.dumps({domain: domain in domain_list for domain in domains})
+
+def mpr_domains_ind(raw_text):
+
+    word_list = mpr_word_list
+    domains = word_list.keys()
+    domain_list = get_domains(raw_text, word_list)
 
     return json.dumps({domain: domain in domain_list for domain in domains})
 
@@ -82,8 +101,14 @@ def expand_json(df, col):
     return pd.concat([df.drop([col], axis=1),
                       df[col].map(lambda x: json.loads(x)).apply(pd.Series)], axis=1)
 
+# Print kls word list
 def get_kls_df():
-    return word_list
+    return kls_word_list
+  
+# Print mpr word list
+def get_mpr_df():
+    df = pd.read_csv('mpr_wordlist.csv')
+    return {col: df[col].dropna().astype(str).tolist() for col in df}
     
 if __name__=="__main__":
 
@@ -98,3 +123,4 @@ if __name__=="__main__":
             " those new products? "
 
     print(kls_domains_ind(text))
+    print(mpr_domains_ind(text))
