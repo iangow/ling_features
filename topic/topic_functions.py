@@ -2,6 +2,7 @@
 import re, json
 from nltk.tokenize import wordpunct_tokenize
 import pandas as pd
+import ast 
 
 # Word list from draft of Kothari, Li and Short (2009)
 kls_word_list = {
@@ -111,7 +112,7 @@ def get_kls_df():
 def get_mpr_df():
     df = pd.DataFrame({'category': mpr_word_list.keys() , 
                        'words': mpr_word_list.values()})
-    df['words'] = df['words'].astype(str).str.replace(r"\\\\b","",regex=True)
+    df['words'] = df['words'].astype(str).str.replace(r"\\\\b","",regex=True).apply(ast.literal_eval)
     return df
     
 if __name__=="__main__":
