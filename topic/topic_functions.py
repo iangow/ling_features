@@ -103,12 +103,16 @@ def expand_json(df, col):
 
 # Print kls word list
 def get_kls_df():
-    return kls_word_list
-  
+    df = pd.DataFrame({'category': kls_word_list.keys() , 
+                       'words': kls_word_list.values()})
+    return df
+ 
 # Print mpr word list
 def get_mpr_df():
-    df = pd.read_csv('mpr_wordlist.csv')
-    return {col: df[col].dropna().astype(str).tolist() for col in df}
+    df = pd.DataFrame({'category': mpr_word_list.keys() , 
+                       'words': mpr_word_list.values()})
+    df['words'] = df['words'].astype(str).str.replace(r"\\\\b","",regex=True)
+    return df
     
 if __name__=="__main__":
 
