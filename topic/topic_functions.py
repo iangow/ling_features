@@ -2,6 +2,8 @@
 import re, json
 from nltk.tokenize import wordpunct_tokenize
 import pandas as pd
+import os 
+_HERE = os.path.dirname(os.path.abspath(__file__))
 import ast 
 
 # Word list from draft of Kothari, Li and Short (2009)
@@ -71,8 +73,7 @@ def create_word_list(input_csv):
     df.replace({'\*':'\\\S*'}, regex=True, inplace=True)
     return {col:('\\b'+df[col].dropna().astype(str)+'\\b').tolist() for col in df}
 
-mpr_word_list = create_word_list('mpr_wordlist.csv')
-
+mpr_word_list = create_word_list(os.path.join(_HERE, 'mpr_wordlist.csv'))
 
 def get_domains(raw_text, word_list):
 
