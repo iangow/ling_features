@@ -1,2 +1,3 @@
 include non_answer/*.txt
 include non_answer/word_lists/*
+include topic/*.csv
