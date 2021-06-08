@@ -7,7 +7,9 @@ from fls.fls import fls
 from word_count.word_count_functions import word_count, \
   number_count, sent_count
 
-from topic.topic_functions import kls_domains_ind, get_kls_df, mpr_domains_ind, get_mpr_df, expand_json
+from topic.topic_functions import kls_domains_ind, get_kls_df, \
+    mpr_domains_ind, get_mpr_df, comp_domains_ind, get_comp_df, \
+    expand_json
 
 from tone.tone_measure_functions import tone_count
 

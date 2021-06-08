@@ -103,18 +103,51 @@ def expand_json(df, col):
     return pd.concat([df.drop([col], axis=1),
                       df[col].map(lambda x: json.loads(x)).apply(pd.Series)], axis=1)
 
-# Print kls word list
+# Regexes for comp intensity
+comp_regex = r"([Cc]ompet(?:(?:it(?:ion|or|ive))|e|ing)s?)"
+comp_regex = re.compile(r"((?:\w+\W+){0,3})" + comp_regex, re.I)
+
+exclude_regex = r"(not|less|few|limited)"
+exclude_regex = re.compile(r"\W" + exclude_regex + r"\W", re.I)
+
+# Comp intensity measures    
+def comp_domains_ind(sents):
+
+    if not re.search(comp_regex, sents):
+        return None
+    elif re.search(exclude_regex, re.search(comp_regex, sents).group(1)):
+        preceding_words = re.search(comp_regex, sents).group(1)
+        matches = {'preceding_words': re.search(comp_regex, sents).group(1),
+                    'competition_word': re.search(comp_regex, sents).group(2),
+                    'exclude_matches':re.search(exclude_regex, preceding_words).group(),
+                    'exclude':True}
+        return json.dumps(matches)
+    else:
+        matches = {'preceding_words': re.search(comp_regex, sents).group(1),
+                    'competition_word': re.search(comp_regex, sents).group(2),
+                    'exclude_matches':None,
+                    'exclude':False}
+        return json.dumps(matches)
+    
+# KLS word lists
 def get_kls_df():
     df = pd.DataFrame({'category': kls_word_list.keys() , 
                        'words': kls_word_list.values()})
     return df
  
-# Print mpr word list
+# MPR word lists
 def get_mpr_df():
     df = pd.DataFrame({'category': mpr_word_list.keys() , 
                        'words': mpr_word_list.values()})
     df['words'] = df['words'].astype(str).str.replace(r"\\\\b","",regex=True).apply(ast.literal_eval)
     return df
+
+# Comp intensity word lists
+def get_comp_df():
+    comp_df = {'category': ['comp_intensity_regex', 'exclude_regex'],
+         'pattern': [comp_regex.pattern, exclude_regex.pattern]}
+    comp_df = pd.DataFrame(comp_df)
+    return comp_df    
     
 if __name__=="__main__":
 
@@ -130,3 +163,4 @@ if __name__=="__main__":
 
     print(kls_domains_ind(text))
     print(mpr_domains_ind(text))
+    print(comp_domains_ind(text))
