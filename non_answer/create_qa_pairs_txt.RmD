@@ -1,0 +1,104 @@
+# 1. link to database wrds to wrds, con to MCCGR
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(DBI)
+library(dplyr, warn.conflicts = FALSE)
+library(dplyr)
+library(dbplyr,warn.conflicts = FALSE)
+library(RPostgreSQL)
+library(tidyr)
+library(tidyverse, warn.conflicts = FALSE)
+library(modeldb)
+library(broom)
+
+Sys.setenv(PGUSER="yiyangw2", PGPASSWORD="temp_20200728")
+Sys.setenv(PGHOST = "10.101.13.99", PGDATABASE="crsp")
+pg <- dbConnect(RPostgres::Postgres())
+con <- dbConnect(dbDriver("PostgreSQL"))
+rs <- dbExecute(pg, "SET search_path TO yiyangw2, public")
+rs <- dbExecute(pg, "SET work_mem TO '10GB'")
+
+wrds <- dbConnect(RPostgres::Postgres(), 
+                  host='wrds-pgdata.wharton.upenn.edu',
+                  port=9737,
+                  sslmode='require',
+                  dbname='wrds',
+                  user='yiyangw2',
+                  password='WuYiyang$0402')
+# dbDisconnect(con)
+```
+
+# 2. check pk
+
+```{sql connection=con}
+select column_name, data_type from information_schema.columns
+where table_name = 'nonanswers_text_wu';
+```
+
+```{sql connection=pg}
+SELECT c.column_name, c.data_type
+FROM information_schema.table_constraints tc 
+JOIN information_schema.constraint_column_usage AS ccu USING (constraint_schema, constraint_name) 
+JOIN information_schema.columns AS c ON c.table_schema = tc.constraint_schema
+  AND tc.table_name = c.table_name AND ccu.column_name = c.column_name
+WHERE constraint_type = 'PRIMARY KEY' and tc.table_name = 'non_answers_yiyangw2';
+
+```
+# 3. qa_pairs_txt: section = 1 learned from gow : add primary key (file_name, last_update, question_nums, answer_nums, speaker_number)
+
+## table qa_pairs_txt 
+
+
+```{sql connection=con}
+create table qa_pairs_txt as(
+with calls as (select * from calls_sample),
+
+speaker_text_qa_section1 as (select file_name, last_update, section, speaker_number, speaker_text from (select distinct * from streetevents.speaker_data) a where section = 1 and context = 'qa'),
+
+qa_pr_1 as (
+  select *, unnest(question_nums) as speaker_number from qa_pairs where section = 1),
+  
+qa_pr_2 as (
+  select 'question' as q_a, l.*, r.speaker_text from qa_pr_1 as l
+  left join speaker_text_qa_section1 as r
+  on l.file_name = r.file_name and l.last_update = r.last_update
+  and l.speaker_number = r.speaker_number 
+),
+
+qa_pr_3 as (
+  select *, unnest(answer_nums) as speaker_number from qa_pairs where section = 1),
+  
+qa_pr_4 as (
+  select 'answer' as q_a, l.*, r.speaker_text from qa_pr_3 as l
+  left join speaker_text_qa_section1 as r
+  on l.file_name = r.file_name and l.last_update = r.last_update
+  and l.speaker_number = r.speaker_number 
+)  
+
+
+select * from  qa_pr_2 
+union all 
+select * from  qa_pr_4
+)
+```
+```{sql connection=pg}
+alter table qa_pairs_txt add primary key (file_name, last_update, question_nums, answer_nums, speaker_number)
+```
+
+```{sql connection=con}
+select count(*) from qa_pairs_txt
+limit 1
+```
+```{sql connection=con}
+with qa_pr_1 as (
+  select *, unnest(question_nums) as speaker_number from qa_pairs where section = 1)
+  select count(*) from qa_pr_1 
+```
+
+```{sql connection=con}
+with qa_pr_3 as (
+  select *, unnest(answer_nums) as speaker_number from qa_pairs where section = 1)
+  select count(*) from qa_pr_3 
+```
+
+
