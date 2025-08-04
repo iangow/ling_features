@@ -12,21 +12,25 @@ except OSError:
     download("en_core_web_sm")
     nlp = spacy.load("en_core_web_sm")
 
-def nsyl(word):
+re_syllables = re.compile(r'(^|[^aeuoiy])(?!e$)[aeouiy]', re.IGNORECASE)
+def count_syllables(word):
+    return len(re_syllables.findall(word))
+
+def nsyl(word, fallback=False):
     if word in dic:
         prons = dic[word]
         num_syls = [len([syl for syl in pron if re.findall('[0-9]', syl)]) for pron in prons]
         return max(num_syls)
     else:
-        return 0 # Needed this to get function to work; not sure what the best way is
+        return count_syllables(word) if fallback else 0
 
-def fog(the_text):
+def fog(the_text, fallback=False):
     doc = nlp(the_text)
     sents = [sent.text for sent in doc.sents]
     words = [token.text.lower() for token in doc if re.findall('[a-zA-Z]', token.text)]
     
     # Require words to be more than three characters. Otherwise, "edu"="E-D-U" => 3 syllables
-    complex_words = [word for word in words if nsyl(word)>=3 and len(word)>3]
+    complex_words = [word for word in words if nsyl(word, fallback)>=3 and len(word)>3]
     if len(words) > 0 and len(sents) > 0:
         fog = 0.4 * (100.0*len(complex_words)/len(words) + 1.0*len(words)/len(sents))
         the_dict = {'fog':fog, 'complex_words': len(complex_words), 'fog_words': len(words),
