@@ -1,0 +1,289 @@
+---
+title: "FOG Index Comparision"
+author: "Rohit"
+format: html
+editor: visual
+---
+
+## FOG Index using Ling-features package
+
+To begin with, I downloaded 30 news articles from Factiva to compare the FOG index scores using different methods. Just for reference, I have also added FOG scores from textstat and py-readability-metrics packages as they seem popular.
+
+```{python}
+import re, nltk, sys
+#%pip install textstat
+import textstat
+import ling_features
+import pandas as pd
+from readability import Readability
+from nltk.corpus import cmudict
+import os
+
+os.chdir("/Users/admin/Desktop/AdvAcc_TA")
+
+#%pip install py-readability-metrics
+#python -m nltk.downloader punkt
+```
+
+First, computing the FOG index using the text book Anand et al. (2020), hereafter ABCL. The ABCL writes functions separately to extract words and sentences as lists.
+
+```{python}
+### Text length
+def identify_words(input_text:str):
+    """Extracts all words from a given text."""
+    words = re.findall(r"\b[a-zA-Z\'\-]+\b",input_text)
+    return words
+    
+def identify_sentences(input_text:str):
+    """Extracts all sentences from a given text."""
+    sentences = re.findall(r"\b[A-Z](?:[^\.!?]|\.\d)*[\.!?]",input_text)
+    return sentences
+
+```
+
+Next, define regex for counting syllables and checking if the word is complex (atleast 3 syllables):
+
+```{python}
+##### Fog index #####
+re_syllables = re.compile(r'(^|[^aeuoiy])(?!e$)[aeouiy]', re.IGNORECASE) # regex pattern that matches vowels in a word (case-insensitive); used for syllable count
+
+def count_syllables(word:str):
+    """Counts the number of syllables in a word."""
+    syllables_matches = re_syllables.findall(word) # gets all syllable regex pattern matches in the input word
+    return len(syllables_matches) # returns the number of syllable matches
+
+def is_complex_word(word:str):
+    """Checks whether a word has three or more syllables."""
+    return count_syllables(word) >= 3
+
+print("Number of syllables in word \"procedure\":",count_syllables("procedure"))
+print("Is word \"procedure\" complex?:",is_complex_word("procedure"))
+
+```
+
+Finally, calculate the FOG index by using the lengths of the lists returned by the above functions for word count, sentence count, and complex words count. I slightly changed the code at the end to return the list of key variables used for FOG index calculation in addition to FOG index itself.
+
+```{python}
+def calculate_fog(text:str):
+    """Calculates the fog index for a given text (string)."""
+    
+    # extracts all sentences from the input text
+    sentences = identify_sentences(text) 
+    # extracts all words from the input text
+    words = identify_words(text) 
+    # creates a list of complex words by using is_complex_word function as a filter
+    complex_words = list(filter(is_complex_word, words))
+    fog_score =  0.4*(float(len(words))/float(len(sentences)) + 100 * float(len(complex_words))/float(len(words)) ) # calculates and returns the fog index
+    
+    fog_sents = float(len(sentences))
+    fog_words = float(len(words))
+    complex_words_count = float(len(complex_words))
+    
+    return {
+        'complex_words': complex_words_count,
+        'fog': fog_score,
+        'fog_sents': fog_sents,
+        'fog_words': fog_words
+    }
+
+```
+
+### Sample Text: I read the text from a single pdf that contains 30 media articles appended to each other. Based on the tags, I extract first 250 words of each article.
+
+```{python}
+#%pip install PyMuPDF
+import fitz  # PyMuPDF
+
+doc = fitz.open("Factiva-20250721-1343.pdf")
+text = "\n".join(page.get_text() for page in doc)
+doc.close()
+
+td_passages = []
+
+# Finding all occurrences of "\nTD\n"
+for match in re.finditer(r'\nTD\n', text):
+    start_pos = match.end()  # Position just after the TD tag
+    following_text = text[start_pos:]  # Get everything after TD
+    words = following_text.split()  # Split into words
+    snippet = " ".join(words[:250])  # Take first 250 words (or fewer if not available)
+    td_passages.append(snippet)
+
+# Example
+print(f"No of snippets: {len(td_passages)}.\n")
+print(td_passages[14]) # example
+
+```
+
+Next, I calculate the fog index using ABCL (Textbook), LF (Ling-Features), and TS (Textstat) methods. In addition, I get the count variables used in the calculation for ABCL and LF methods.
+
+```{python}
+
+def get_fog_scores(passages):
+    fog_abcl_list = []
+    fog_ts_list = []
+    fog_lf_list = []
+    fog_prm_list = []
+
+    for passage in passages:
+        fog_abcl_dict = calculate_fog(passage)
+        fog_ts_val = textstat.gunning_fog(passage)
+        fog_lf_dict = ling_features.fog(passage)
+        fog_prm_dict = Readability(passage).gunning_fog().score
+
+        fog_abcl_list.append(fog_abcl_dict)
+        fog_ts_list.append(fog_ts_val)
+        fog_lf_list.append(fog_lf_dict)
+        fog_prm_list.append(fog_prm_dict)
+
+    def flatten_fog_dict(d, prefix):
+        return {
+            f'{prefix}fog': float(d.get('fog')),
+            f'{prefix}complex_words': float(d.get('complex_words')),
+            f'{prefix}fog_sents': float(d.get('fog_sents')),
+            f'{prefix}fog_words': float(d.get('fog_words'))
+        }
+
+    rows = []
+    for abcl, ts, lf, prm in zip(fog_abcl_list, fog_ts_list, fog_lf_list, fog_prm_list):
+        row = flatten_fog_dict(abcl, 'abcl_')
+        row.update(flatten_fog_dict(lf, 'lf_'))
+        row['ts_fog'] = float(ts)
+        row['prm_fog'] = float(prm)
+        rows.append(row)
+
+    return rows
+
+
+df_fog = pd.DataFrame(get_fog_scores(td_passages))
+
+
+```
+
+The output below shows that fog scores of ABCL and LF are different by 1-2 units for the samples. However, the correlation is very high.
+
+```{python}
+print(df_fog[['abcl_fog', 'lf_fog', 'prm_fog', 'ts_fog']].round(2))
+
+print("\n Correlation Matrix")
+print(df_fog[['abcl_fog', 'lf_fog', 'prm_fog', 'ts_fog']].corr().round(2))
+
+```
+
+```{python}
+#| echo: false
+#| eval: false
+#### The same can be visually seen from the plot (optional as correlations already give a clear picture):
+
+#### Plot for Comparision
+#%pip install matplotlib
+
+import matplotlib.pyplot as plt
+
+plt.figure(figsize=(10,6))
+
+plt.plot(df_fog.index, df_fog['ts_fog'], label='TS Fog Index', marker='o')
+plt.plot(df_fog.index, df_fog['abcl_fog'], label='ABCL Fog Index', marker='s')
+plt.plot(df_fog.index, df_fog['lf_fog'], label='LF Fog Index', marker='^')
+plt.plot(df_fog.index, df_fog['prm_fog'], label='PRM Fog Index', marker='+')
+
+plt.ylabel('Fog Index Value')
+plt.title('Comparison of Fog Index Measures')
+plt.legend()
+plt.grid(True)
+plt.show()
+
+```
+
+### **The differences could come from any of the 3 variables used to compute the fog index: sentence count, word count, and complex word count:**
+
+i)  Complex word count: the way this is calculated is different across LF and ABCL methods. In ABCL, a regex '(\^\|\[\^aeuoiy\])(?!e\$)\[aeouiy\]' is used to match the vowels with a few conditions. However, LF does it in a more practical way - get all the pronunciations and consider the one with highest syllable count.
+
+I'm wondering if it is okay if we optimise this further by using spacy or NLTK's pos tagging capability to identify the pos and assign the corresponding pronunciation's syllable count?
+
+ii) With the sentence counts, the difference seemed minute in this sample atleast. It is coming from the last sentence as it is not ending with "." due to abruptly cutting-off at 250 words in the news articles. The ABCL method fails to recognise it (combines the last with the 2nd last sentence), but LF isolates the last to a separate sentence.
+
+```{python}
+print("Sentence counts of the extracted snippets: ")
+print(df_fog[['abcl_fog_sents', 'lf_fog_sents']].head())
+
+# Add "." at the end if there isn't
+td_passages_dot = [p.strip() + '.' if not p.strip().endswith('.') else p.strip() for p in td_passages]
+df_fog_dot = pd.DataFrame(get_fog_scores(td_passages_dot))
+
+print("\n Sentence counts of the modified (end with .) extracted snippets:")
+print(df_fog_dot[['abcl_fog_sents', 'lf_fog_sents']].head())
+
+```
+
+iii) Switch to SpaCy from NLTK?
+
+While NLTK and SpaCy both use machine learning models to train, from my limited knowledge, SpaCy in general is faster and can be more accurate. I tried to find some concrete evidence but found only blogs. For one of the sample texts, space between . and number was creating an issue. In the example below, "... No. 5, but..." is split correctly by SpaCy but not NLTK. This is however just 1 instance, and I'm not completely certain it will be better to shift to SpaCy.
+
+```{python}
+#| echo: false
+#| eval: false
+
+sents_ABCL = identify_sentences(td_passages_dot[26])
+sents_LF = nltk.sent_tokenize(td_passages_dot[26])
+
+print("ABCL Sentences:")
+for i, sent in enumerate(sents_ABCL):
+    print(f"{i}: {sent}")
+
+print("\nLF Sentences:")
+for i, sent in enumerate(sents_LF):
+    print(f"{i}: {sent}")
+
+```
+
+```{python}
+#%pip install spacy
+import spacy
+nlp = spacy.load("en_core_web_sm")
+text_dummy = "I'm doing good. You're very nice. I got rank no. 5, but Vance did something terrible."
+#doc = nlp(td_passages[26])
+doc = nlp(text_dummy)
+
+print("\n SpaCy output:")  
+for i, sent in enumerate(doc.sents):
+    print(f"{i}: {sent.text}")
+
+print("\n NLTK output:")    
+nltk.sent_tokenize(text_dummy)
+
+```
+
+iv) Also, not all words are in the dictionary. For such words, can we use the method used by ABCL rather than just assigning 0 syllables? The code below prints out the words in the sample text not found in the dictionary and hence are not complex words by default.
+
+The downside of this is that names of persons or companies (not sure if this is a downside), and words with incorrect spellings would also be considered.
+
+```{python}
+
+dic = cmudict.dict()
+not_found_count = 0
+
+def nsyl(word):
+  global not_found_count
+  if word in dic:
+        prons = dic[word]
+        num_syls = [len([syl for syl in pron if re.findall('[0-9]', syl)]) for pron in prons]
+        return max(num_syls)
+  else:
+        print("not found in dict:", word)
+        not_found_count += 1
+        return 0 # Needed this to get function to work; not sure what the best way is
+
+combined_text = " ".join(td_passages)
+sents = nltk.sent_tokenize(combined_text)
+words = [word.lower() for sent in sents
+  for word in nltk.word_tokenize(sent) if re.findall('[a-zA-Z]', word)]
+
+complex_words = [word for word in words if nsyl(word)>=3 and len(word)>3]
+print(not_found_count)
+print(len(words))
+
+```
+
+References:
+
+Vic Anand, Khrystyna Bochkay, Roman Chychyla and Andrew Leone (2020 isbn), “Using Python for Text Analysis in Accounting Research (forthcoming)”, Foundations and Trends® in Accounting: Vol. xx, No. xx, pp 1–18. DOI: 10.1561/XXXXXXXXX
