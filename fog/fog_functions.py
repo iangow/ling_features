@@ -1,9 +1,16 @@
-import re, nltk, sys
+import re, nltk, sys, spacy
 import string
 from nltk.corpus import cmudict
 from collections import Counter
+from spacy.cli import download
 
 dic = cmudict.dict()
+
+try: # install the moodel only once
+    nlp = spacy.load("en_core_web_sm")
+except OSError:
+    download("en_core_web_sm")
+    nlp = spacy.load("en_core_web_sm")
 
 def nsyl(word):
     if word in dic:
@@ -14,10 +21,10 @@ def nsyl(word):
         return 0 # Needed this to get function to work; not sure what the best way is
 
 def fog(the_text):
-    sents = nltk.sent_tokenize(the_text)
-    words = [word.lower() for sent in sents
-                for word in nltk.word_tokenize(sent) if re.findall('[a-zA-Z]', word)]
-
+    doc = nlp(the_text)
+    sents = [sent.text for sent in doc.sents]
+    words = [token.text.lower() for token in doc if re.findall('[a-zA-Z]', token.text)]
+    
     # Require words to be more than three characters. Otherwise, "edu"="E-D-U" => 3 syllables
     complex_words = [word for word in words if nsyl(word)>=3 and len(word)>3]
     if len(words) > 0 and len(sents) > 0:
