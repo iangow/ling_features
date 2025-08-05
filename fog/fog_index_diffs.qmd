@@ -19,10 +19,8 @@ from readability import Readability
 from nltk.corpus import cmudict
 import os
 
-os.chdir("/Users/admin/Desktop/AdvAcc_TA")
-
-#%pip install py-readability-metrics
-#python -m nltk.downloader punkt
+# %pip install py-readability-metrics textstat fitz ling_features frontend
+# python -m nltk.downloader punkt cmudict
 ```
 
 First, computing the FOG index using the text book Anand et al. (2020), hereafter ABCL. The ABCL writes functions separately to extract words and sentences as lists.
