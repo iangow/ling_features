@@ -1,6 +1,6 @@
 ---
 title: "fog_comp_new_corpus"
-format: html
+format: pdf
 editor: visual
 ---
 
@@ -76,7 +76,6 @@ Ling-features fog function:
 
 
 dic = cmudict.dict()
-os.chdir("/Users/admin/Desktop/AdvAcc_TA/ling_features/fog") # Location of missing_dict.csv
 manual_df = pd.read_csv("missing_dict.csv") 
 
 # Convert to a dictionary: {word: syllables}
@@ -114,7 +113,7 @@ Extracting the corpus for testing
 ```{python}
 
 # Get all .txt files in "test_corpus"
-folder_path = "/Users/admin/Desktop/AdvAcc_TA/ling_features/test_corpus" # location of test_corpus
+folder_path = "../test_corpus" # location of test_corpus
 file_paths = glob.glob(os.path.join(folder_path, "*.txt"))
 
 # Read them into a list
@@ -181,6 +180,3 @@ print("Complex words, sentences, and words:")
 print(df_counts)
 
 ```
-
-
-
