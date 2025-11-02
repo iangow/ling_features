@@ -1,14 +1,43 @@
 ---
-title: fog_comp_new_corpus
-format: pdf
+title: "Refining the Ling-Features FOG Method through Comparative Analysis with ABCL"
+format:
+  pdf:
+    keep-tex: true
+    include-in-header:
+      - text: |
+          \usepackage{fvextra}
+          \fvset{breaklines=true, breakanywhere=true, breaksymbolleft={}, breakindent=2em}
+          \DefineVerbatimEnvironment{Highlighting}{Verbatim}{breaklines,breakanywhere,commandchars=\\\{\}}
+          \DefineVerbatimEnvironment{verbatim}{Verbatim}{breaklines,breakanywhere,breakindent=2em}
 editor: visual
-jupyter: python3
+engine: knitr
 ---
+
+This document compares the FOG readability method implemented in the Ling-Features (LF) package with that used in Anand et al. (2020), hereafter referred to as ABCL, to identify and refine areas where the LF implementation can be improved. Using a corpus of earnings announcement texts, FOG scores are generated under both methods. The results are compared, and the analysis is used to refine the LF FOG function by evaluating the strengths and limitations of the existing word and sentence tokenization methods, as well as the syllable-counting approach, while discussing the underlying reasons for the observed differences.
+
+[Broad differences between methods in terms of count estimations:]{.underline}
+
+*Complex word count:*
+
+ABCL: Uses regex directly to determine no of words with 3 or more syllables:\
+`(^|[^aeuoiy])(?!e$)[aeouiy]`.
+
+LF: Uses cmudict to get all possible pronunciations of a word and consider the one with max length to determine number of syllables.
+
+*Sentence Count:*
+
+ABCL: Uses regex: `\b[A-Z](?:[^\.!?]|\.\d)*[\.!?]`
+
+LF: Uses nltk sentence tokenizer
+
+*Word Count:*
+
+ABCL: Uses regex: `\b[a-zA-Z\'\-]+\b`
+
+LF: Uses nltk word tokenizer
 
 ```{python}
 import re, nltk, sys
-#%pip install textstat
-import textstat
 import ling_features
 from ling_features import fog
 import pandas as pd
@@ -17,7 +46,7 @@ from nltk.corpus import cmudict
 import os, glob
 import string
 from collections import Counter
-# %pip install py-readability-metrics textstat fitz ling_features frontend
+# %pip install py-readability-metrics fitz ling_features frontend
 # python -m nltk.downloader punkt cmudict
 ```
 
@@ -79,14 +108,18 @@ def calculate_fog(text:str, prefix:str = None):
     return the_dict
 ```
 
-Ling-features fog function:
+Ling-features fog function: The original LF FOG function is modified in 2 aspects:
+
+i) If the word is not in the cmu dictionary, ABCL's count syllable functions \
+is used as a fallback while the original function omitted such words.
+
+ii) "abcl_wcount = False" argument is added to the fog function to give an option to\
+the users to choose ABCL's word count method instead of original LF which uses nltk \
+word tokenizer. By default, it uses original LF word count method. The reasoning for\
+this is explained in later sections.
 
 ```{python}
 dic = cmudict.dict()
-manual_df = pd.read_csv("missing_dict.csv") 
-
-# Convert to a dictionary: {word: syllables}
-manual_syllables = dict(zip(manual_df['word'], manual_df['syllables']))
 
 def nsyl(word):
     if word in dic:
@@ -94,15 +127,16 @@ def nsyl(word):
         num_syls = [len([syl for syl in pron 
                        if re.findall('[0-9]', syl)]) for pron in prons]
         return max(num_syls)
-    elif word in manual_syllables:  # manual CSV
-        return int(manual_syllables[word])
     else:
-        missing_words[word_lower] = missing_words.get(word_lower, 0) + 1
-        return 0  # fallback if missing in both the dicts
+        return count_syllables(word)  # fallback to ABCL cplx wrds function
     
-def lingf_fog(the_text):
+def lingf_fog(the_text, abcl_wcount=False):
     sents = nltk.sent_tokenize(the_text)
-    words = [word.lower() for sent in sents
+    
+    if abcl_wcount:
+      words = identify_words(the_text)
+    else:
+      words = [word.lower() for sent in sents
                 for word in nltk.word_tokenize(sent) 
                     if re.findall('[a-zA-Z]', word)]
 
@@ -155,10 +189,7 @@ def get_stats(passages, fun, prefix = None):
   stats = stats.map(lambda x: add_prefix(x, prefix=prefix))                  
   stats = pd.json_normalize(stats)
   return stats
-```
 
-
-```{python}
 def get_fog_scores(passages):
     return pd.concat([get_stats(passages, calculate_fog, prefix='abcl_'),
                       get_stats(passages, fog, prefix='lf_orig_'), 
@@ -166,6 +197,7 @@ def get_fog_scores(passages):
 ```
 
 ```{python}
+corpus = get_test_corpus()
 df_fog = get_fog_scores(get_test_corpus())
 df_fog.index = [os.path.basename(f) for f in file_paths] 
 ```
@@ -174,15 +206,208 @@ df_fog.index = [os.path.basename(f) for f in file_paths]
 # Table 1: FOG scores only
 df_scores = df_fog[["abcl_fog", "lf_orig_fog", "lf_fog"]]
 
-# Table 2: complex words, sentences, and words
-df_counts = df_fog[
-    ["abcl_complex_words", "lf_complex_words", "abcl_fog_sents", 
+# Table 2: complex words
+df_counts1 = df_fog[
+    ["abcl_complex_words", "lf_complex_words"]
+]
+
+# Table 3: Sentence and word counts
+df_counts2 = df_fog[
+    ["abcl_fog_sents", 
      "lf_fog_sents", "abcl_fog_words", "lf_fog_words"]
 ]
 
-print("FOG Scores Table:")
-print(df_scores, "\n")
+print("Table 1: FOG Scores using ABCL, original LF, and new LF FOG \
+functions")
+print(df_scores, "\n\n")
 
-print("Complex words, sentences, and words:")
-print(df_counts)
+print("Table 2: Complex word counts with ABCL and new LF FOG functions")
+print(df_counts1, "\n\n")
+
+print("Table 3: Sentence and word counts with ABCL and new LF FOG functions")
+print(df_counts2, "\n")
 ```
+From the Table 1 above, it can be seen that while the FOG scores seem mostly similar, in some of the cases (ec14.txt for ex) the difference between ABCL and original LF FOG scores is more than a unit. The same can also be observed for scores of original LF and LF methods, which can be attributed to having ABCL's syllable count method as fallback incase the word isn't found in the CMU dict. 
+
+The differences in the FOG scores could arrive from variances in counts of sentences, words, or complex words as can be observed from Tables 2 and 3.
+
+***Sentence Counts***
+
+With regards to sentences, the regular expression used by the ABCL does not account for the periods with in abbreviations like "U.S." resulting in higher number of sentences for ABCL. The nltk sentence tokenizer however is dealing with it correctly by not ending the sentences at the periods within "U.S.".
+
+This issue is critical as it can be seen from below that "food safety issue is now largely behind us, and we expect to have fully recovered by the beginning of " part of the sample_text is not considered in any sentence as ABCL's regex looks for a capital letter at the word boundary to begin the sentence resulting in the next sentence starting at "Q".
+
+The NLTK tokenizer is trained on a large corpus of text, enabling it to accurately recognise sentence boundaries regardless of whether “U.S.” appears in the middle (as in sample_text1) or at the end of a sentence (as in sample_text2).
+
+```{python}
+# this is extracted from corpus[0] ec15.txt
+
+sample_text1 = "Second, the U.S. food safety issue is now largely behind us, \
+and we expect to have fully recovered by the beginning of Q2."
+
+nltk.sent_tokenize(sample_text1) # Ling Features
+identify_sentences(sample_text1) # ABCL
+
+sample_text2 = "Our headquarters will remain in the U.S. Hence, I will not \
+shift to Europe."
+
+nltk.sent_tokenize(sample_text2) # Ling Features
+identify_sentences(sample_text2) # ABCL
+
+```
+We do acknowledge that nltk is not perfect as it can be seen from the case below with sentence genuinely ending at "Netflix, Inc.", but nltk assumes that such notation is used with in a sentence. 
+
+```{python}
+#| code-overflow: wrap
+# shortened excerpt from corpus[13] ec9.txt
+
+sample_text3 = "The most immediate benefit is making it easier \
+to buy on Netflix, Inc. We hear that benefit, from talking to \
+advertisers."
+
+nltk.sent_tokenize(sample_text3) # Ling Features
+identify_sentences(sample_text3) # ABCL
+
+```
+
+The NLTK tokenizer provides a more robust and context-aware approach to sentence segmentation. Its training on a large, diverse corpus allows it to handle edge cases such as abbreviations far more reliably than ABCL’s simple rule-based regex. Although occasional misclassifications (eg: treating “Inc.” as part of a continuing sentence) do occur, these are rare and comparatively minor. Given that ABCL’s method can omit portions of text and fragment sentences around common abbreviations, the NLTK sentence tokenizer is retained for LF FOG function.
+
+***Word Counts***
+
+To broadly get an idea of the differences between the word-count functions used in ABCL and LF, the tokenisation outputs of both the methods using one of the corpus texts is compared below:
+
+```{python}
+
+# --- Sample text ---
+text = corpus[7]
+
+# --- LING FEATURES ---
+lf_sents = nltk.sent_tokenize(text)
+lf_words = [word.lower() for sent in lf_sents
+                for word in nltk.word_tokenize(sent) if re.findall('[a-zA-Z]', word)]
+
+abcl_words = [w.lower() for w in identify_words(text)]
+# The words are converted to lower case to facilitate comparison with LF
+# identify_words() is the function used by ABCL.
+
+# Converting to sets for comparison
+lf_set = set(lf_words)
+abcl_set = set(abcl_words)
+
+# Computing differences
+only_in_lf = sorted(list(lf_set - abcl_set))
+only_in_abcl = sorted(list(abcl_set - lf_set))
+
+print(f"LF word count: {len(lf_words)}")
+print(f"ABCL word count: {len(abcl_words)}\n")
+
+print("-Words in Ling Features but NOT in ABCL-")
+print(only_in_lf)
+
+print("\n-Words in ABCL but NOT in Ling Features-")
+print(only_in_abcl)
+
+```
+Two primary differences between the methods include:
+
+i) LF requires words to have atleast 1 alphabet while ABCL requires words to completely consist of alphabets. 
+ii) LF splits contractions (e.g: "don't") while ABCL considers the whole word as one. A minor drawback here is that words in possessive form such as "Google's revenue decreased..." are also split. 
+
+These differences can be mapped to the above output of words in LF or ABCL alone. To be more precise, a standalone example below with sample_text4 shows the same. In case of LF, "Google's" is split into "Google" and "'s", "didn't" is split into "did" and "n't", and "don't" is split into "do" and "n't", where as words are taken in combined form in ABCL.
+
+```{python}
+#Sample text
+sample_text4 = "The Q1 profit for Google's LA division increased. However, it \
+didn't do well relative to it's competitor. Hence, don't support \
+Google."
+
+#Ling Features Method
+lf_sents = nltk.sent_tokenize(sample_text4)
+lf_words = [word.lower() for sent in lf_sents
+                for word in nltk.word_tokenize(sent) if re.findall('[a-zA-Z]', word)]
+# ABCL Method
+abcl_words = identify_words(sample_text4)
+
+print("Words using LF method: ", lf_words)
+print("Words using ABCL method: ", abcl_words)
+
+```
+
+Since it is somewhat subjective whether contractions should be split and whether words should include only alphabets, we add an argument "abcl_wcount" to the original LF FOG method (default = False), allowing users to choose the word-counting approach that best suits their preferences.
+
+***Complex Words***
+
+The method used by ABCL to estimate the word complexity is considerably different to LF. The ABCL method does not use any dictionary but rather just uses a regular expression counting vowels. The LF method however uses cmudict and estimates syllable sounds based on the pronunciations. 
+
+Like word counts, the complex words output of abcl and lf methods for one of the corpus texts is compared.
+
+```{python}
+# --- Sample text ---
+text = corpus[9]
+
+lf_sents = nltk.sent_tokenize(text)
+lf_words = [word.lower() for sent in lf_sents
+                for word in nltk.word_tokenize(sent) if re.findall('[a-zA-Z]', word)]
+lf_complex_words = [word for word in lf_words if nsyl(word)>=3 and len(word)>3]
+
+abcl_words = [w.lower() for w in identify_words(text)] # The words are converted to lower case to facilitate comparison with LF; identify_words() is the function used by ABCL.
+abcl_complex_words = list(filter(is_complex_word, abcl_words))
+
+# Converting to sets for comparison
+lf_set = set(lf_complex_words)
+abcl_set = set(abcl_complex_words)
+
+# Computing differences
+only_in_lf = sorted(list(lf_set - abcl_set))
+only_in_abcl = sorted(list(abcl_set - lf_set))
+
+print(f"LF complex word count: {len(lf_complex_words)}")
+print(f"ABCL complex word count: {len(abcl_complex_words)}\n")
+print(f"Unique LF complex words: {len(lf_set)}")
+print(f"Unique ABCL complex words: {len(abcl_set)}\n")
+
+print("-Complex words in Ling Features but NOT in ABCL-")
+print(only_in_lf)
+
+print("\n-Complex words in ABCL but NOT in Ling Features-")
+print(only_in_abcl)
+
+```
+
+From the above output, we could see words such as "safety", and "something" were classified as complex by ABCL but not LF, vice-versa for "notable" and "radio".
+
+```{python}
+print("No of syllable sounds in safety LF:", nsyl("safety"), " ABCL: ", count_syllables("safety"))
+print("No of syllable sounds in something LF:", nsyl("something"), " ABCL: ", count_syllables("something"))
+
+print("No of syllable sounds in notable LF:", nsyl("notable"), " ABCL: ", count_syllables("notable"))
+print("No of syllable sounds in radio LF:", nsyl("radio"), " ABCL: ", count_syllables("radio"))
+
+```
+The ABCL regex counts vowels including “y” (i.e., a, e, i, o, u, y) that appear either at the beginning of a word or are followed by a consonant. However, terminal “e”s are excluded. For example, in the word “notable”, the vowels “o” and “a” are counted, but the final “e” is not. In reality, “notable” is pronounced /ˈnəʊtəbl/ (NOH-tuh-buhl; source: OED.com), which aligns with the CMU Pronouncing Dictionary (cmudict) representation indicating three vowel sounds.
+
+```{python}
+dic["notable"]
+```
+
+The same issue arises with “safety”, pronounced /ˈseɪfti/ (SAYFF-tee). The LF method correctly identifies two syllables, whereas the ABCL regex counts three, as it treats both vowels in “safe” and the “y” ending as separate vowel units.
+
+```{python}
+dic["safety"]
+```
+
+The LF method is more practical and clearly more accurate in classifying complex words. However, since cmudict covers only a limited vocabulary and most classification differences arise for borderline cases i.e., words with two or three syllable sounds, we modify the original LF method to use the ABCL approach as a fallback when a word is not found in cmudict.
+
+Overall, the method for calculating sentence counts remains unchanged. However, for word counts, an optional argument has been added that allows users to choose between ABCL’s regex-based approach and the NLTK word tokenizer. For complex-word counts, the approach remains the same as in the original LF method, but now incorporates ABCL’s regex-based syllable counting as a fallback when a word is not found in cmudict.
+
+
+
+
+
+
+
+References:
+
+Vic Anand, Khrystyna Bochkay, Roman Chychyla and Andrew Leone (2020 isbn), “Using Python for Text Analysis in Accounting Research (forthcoming)”, Foundations and Trends® in Accounting: Vol. xx, No. xx, pp 1–18. DOI: 10.1561/XXXXXXXXX
+
+
